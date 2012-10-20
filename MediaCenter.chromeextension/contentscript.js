@@ -10,12 +10,7 @@ function handleLoadEvent(event) {
   // Resolve URL
   var anchor = document.createElement("a");
   anchor.href = media.src;
-
-  //media.addEventListener("loadstart", handleLoadEvent, true);
-  //media.addEventListener("loadeddata", handleLoadEvent, true);
-  media.addEventListener("loadeddata", handleLoadEvent, true);
-
-
+  
   //tell background to setup context menu and page action
   chrome.extension.sendRequest({url: anchor.href}, function(response){
     if (!response.allowPropagation) {
@@ -34,7 +29,7 @@ function handleLoadEvent(event) {
         console.log("contentscript.js overlay contextmenu", overlay, e);
         e.stopPropagation();
       }, false);
-      }
+    }
   });
 }
 

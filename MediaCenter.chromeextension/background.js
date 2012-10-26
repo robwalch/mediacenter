@@ -1,37 +1,52 @@
 
 // SETTINGS
 var settings = {
-      airplayHostname: "apple-tv.local",
-      allowPropagation: true
-    },
-    secureSettings = {
-      airplayPassword: ""
-    };
+  airplayName: "Apple TV",
+  airplayHostname: "apple-tv.local",
+  allowPropagation: true
+};
+var secureSettings = {
+  airplayPassword: ""
+};
+var videoUrl;
+var tabId;
 
-function onRequest(request, sender, sendResponse) {
-  console.log("onRequest", request, sender, settings.menuitem);
+function onMessage(request, sender, sendResponse) {
+  console.log("onMessage", request, sender);
   if (request.url) {
     chrome.pageAction.show(sender.tab.id);
-    if (settings.menuitem) {
-      chrome.contextMenus.remove("airplay");
-    }
-    settings.menuitem = chrome.contextMenus.create({
-      "id": "airplay",
-      "title": "Send via AirPlay",
-      "contexts":["page","video", "audio"]
+    chrome.pageAction.setTitle({
+      tabId: sender.tab.id,
+      title: request.height + "p"
     });
-    settings.url = request.url;
+    if (videoUrl) {
+      chrome.contextMenus.remove("airplay");
+      chrome.contextMenus.remove("airplayStart");
+    }
+    chrome.contextMenus.create({
+      id: "airplay",
+      title: "Play on "+ settings.airplayName,
+      contexts: ["all"]//["page", "video", "audio"]
+    });
+    chrome.contextMenus.create({
+      id: "airplayStart",
+      title: "Play on "+ settings.airplayName +" from start",
+      contexts: ["all"]//["page", "video", "audio"]
+    });
+    videoUrl = request.url;
+    tabId = sender.tab.id;
   }
   // Return nothing to let the connection be cleaned up.
-  sendResponse(settings);
+  sendResponse({
+    allowPropagation: settings.allowPropagation
+  });
 }
 
 // Listen for the content script to send a message to the background page.
-chrome.extension.onRequest.addListener(onRequest);
+chrome.extension.onMessage.addListener(onMessage);
 chrome.contextMenus.onClicked.addListener(onClickHandler);
 
-function airplay(url) {
-  console.log("airplay", url);
+function airplay(url, position) {
 	var xhr = new XMLHttpRequest();
 	var port = ":7000";
 	if(/:\d+$/.test(settings.airplayHostname)) port = "";
@@ -52,7 +67,9 @@ function airplay(url) {
 			xhr.send(null);
 		}, 1000);
 	}, false);
-	xhr.send("Content-Location: " + url + "\nStart-Position: 0\n");
+  position = position || 0;
+  console.log("airplay", url, position);
+	xhr.send("Content-Location: " + url + "\nStart-Position: "+position.toFixed(2)+"\n");
 }
 
 function stop() {
@@ -63,11 +80,14 @@ function stop() {
 	xhr.send(""); // sic
 }
 
-// TODO: airplayImage ??
-
 function onClickHandler(info, tab) {
-  if (info.menuItemId == "airplay") {
+  if (info.menuItemId.indexOf("airplay") === 0) {
     console.log("onClickHandler", info, tab);
-    airplay(settings.url);
+    //get time from page
+    chrome.tabs.sendMessage(tabId, {}, function(response){
+      var url = response.url;
+      var position = (info.menuItemId === "airplayStart") ? 0 : response.position;
+      airplay(url, position);
+    });
   }
 }

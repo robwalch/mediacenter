@@ -35,6 +35,12 @@ function onMessage(request, sender, sendResponse) {
     });
     videoUrl = request.url;
     tabId = sender.tab.id;
+    chrome.tabs.onRemoved.addListener(function(closedTabId, removeInfo) {
+      if (closedTabId === tabId) {
+        chrome.contextMenus.remove("airplay");
+        chrome.contextMenus.remove("airplayStart");
+      }
+    });
   }
   // Return nothing to let the connection be cleaned up.
   sendResponse({
